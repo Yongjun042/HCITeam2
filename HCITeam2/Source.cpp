@@ -8,7 +8,7 @@ using namespace cv;
 
 int main()
 {
-	Mat input =imread("./색다른_크롭_분할선.jpg");
+	Mat input =imread("./평범한 분할선_크롭.jpg");
 	Mat hsv, h, s, v;
 	Mat hls, h2, l, v2;
 	
@@ -85,13 +85,13 @@ int main()
 
 	// Canny Edge detection
 	Mat p1_canny;
-	Canny(input, p1_canny, 25, 50);
+	Canny(input, p1_canny, 15, 60);
 	imshow("p1_canny", p1_canny);
 
 	// Hough Transform
 	// 4번쨰 파라미터를 조정하여 선 검출 정도를 조절
 	vector<Vec2f> lines;
-	HoughLines(p1_canny, lines, 1, CV_PI / 180, 150);
+	HoughLines(p1_canny, lines, 1, CV_PI / 180, 100);
 
 	Mat img_hough;
 	input.copyTo(img_hough);
@@ -99,11 +99,20 @@ int main()
 	Mat img_lane;
 	threshold(p1_canny, img_lane, 150, 255, THRESH_MASK);
 
-	std::cout<<lines.size();
+	
 
 	for (size_t i = 0; i < lines.size(); i++)
 	{
 		float rho = lines[i][0], theta = lines[i][1];
+		
+
+		std::cout <<"rho:"<< rho << " theta:" << theta << endl;
+		if (theta==0 && rho<250 && rho>200)
+		{
+			std::cout << "평범 분할선이 있습니다." << endl;
+		}
+
+
 		Point pt1, pt2;
 		double a = cos(theta), b = sin(theta);
 		double x0 = a * rho, y0 = b * rho;
@@ -114,6 +123,9 @@ int main()
 		line(img_hough, pt1, pt2, Scalar(0, 0, 255), 2, 8);
 		line(img_lane, pt1, pt2, Scalar::all(255), 1, 8);
 	}
+
+	std::cout <<"검출한 직선 개수:"<< lines.size();
+
 
 	imshow("img_hough", img_hough);
 	imshow("img_lane", img_lane);
