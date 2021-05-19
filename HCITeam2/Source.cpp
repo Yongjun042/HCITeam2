@@ -2,14 +2,20 @@
 #include<vector>
 #include<iostream>
 
+
 using namespace std;
 using namespace cv;
 
 int main()
 {
-	Mat input =imread("./sample.jpg");
+	Mat input =imread("./í‰ë²”í•œ ë¶„í• ì„ _í¬ë¡­.jpg");
 	Mat hsv, h, s, v;
 	Mat hls, h2, l, v2;
+	
+	resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
+	
+	imshow("input", input);
+
 	cvtColor(input,hsv,COLOR_BGR2HSV);
 	cvtColor(input, hls, COLOR_BGR2HLS);
 	
@@ -21,29 +27,29 @@ int main()
 	//imshow("hls", hlsc[2]);
 	//imshow("hsv", hsvc[2]);
 	
-	//±×¸²ÀÚ ºÎºĞ ÃßÃâ
+	//ê·¸ë¦¼ì ë¶€ë¶„ ì¶”ì¶œ
 	Mat shadowMask;
 	
-	//±×¸²ÀÚ ¹üÀ§
+	//ê·¸ë¦¼ì ë²”ìœ„
 	Scalar lows = Scalar(0, 0, 76.5);
 	Scalar highs = Scalar(180, 255, 145.5);
 	inRange(hsv, lows, highs, shadowMask);
 	
 	//imshow("shadowMask", shadowMask);
-	//¾Ë¾à ÃßÃâ
+	//ì•Œì•½ ì¶”ì¶œ
 	Mat shapemask;
 	
-	//¾Ë¾à ¹üÀ§
+	//ì•Œì•½ ë²”ìœ„
 	Scalar low = Scalar(0, 0, 0);
-	Scalar high = Scalar(180, 255, 25);
+	Scalar high = Scalar(180, 255, 30);
 	inRange(hls, low, high, shapemask);
 	//imshow("shapemask", shapemask);
 
-	//¾Ë¾à ¹üÀ§ - ±×¸²ÀÚ ¹üÀ§
+	//ì•Œì•½ ë²”ìœ„ - ê·¸ë¦¼ì ë²”ìœ„
 	Mat ssmask;
 	subtract(shapemask, shadowMask, ssmask);
 	//imshow("ssmask", ssmask);
-	//¿ÀÇÁ´× Å¬·ÎÂ¡À¸·Î ´Ùµë±â
+	//ì˜¤í”„ë‹ í´ë¡œì§•ìœ¼ë¡œ ë‹¤ë“¬ê¸°
 	Mat ssmasked1, ssmasked2;
 	Mat mask = getStructuringElement(MORPH_ELLIPSE,Size(2,2));
 	Mat mask2 = getStructuringElement(MORPH_ELLIPSE,Size(8,8));
@@ -53,32 +59,77 @@ int main()
 	morphologyEx(ssmasked1, ssmasked2, MORPH_CLOSE, mask2);
 	//imshow("ssmasked2", ssmasked2);
 	
-	//¿øº»ÀÌ¹ÌÁö¿¡¼­ ¾Ë¾à ÀÚ¸£±â
+	//ì›ë³¸ì´ë¯¸ì§€ì—ì„œ ì•Œì•½ ìë¥´ê¸°
 	cvtColor(ssmasked2, ssmasked2, COLOR_GRAY2BGR);
 	Mat p1;
 	p1 = input + ~ssmasked2;
-	imshow("p1", p1);
+	//imshow("p1", p1);
 
-	// ¾Ë¾à ¿µ¿ª¿¡¼­ À½°¢ ÃßÃâ
+	// ì•Œì•½ ì˜ì—­ì—ì„œ ìŒê° ì¶”ì¶œ
 	// Sobel Edge
 	Mat p1_sobel_x;
-	Sobel(p1, p1_sobel_x, -1, 1, 0);
+	Sobel(input, p1_sobel_x, -1, 1, 0);
 	Mat p1_sobel_y;
-	Sobel(p1, p1_sobel_y, -1, 0, 1);
+	Sobel(input, p1_sobel_y, -1, 0, 1);
 
-	//imshow("sobel_x", p1_sobel_x);
-	//imshow("sobel_y", p1_sobel_y);
+	imshow("sobel_x", p1_sobel_x);
+	imshow("sobel_y", p1_sobel_y);
 	imshow("sobel_p1", p1_sobel_x + p1_sobel_y);
+
+
 
 	// Laplacian Edge
 	Mat p1_laplacian;
-	Laplacian(p1, p1_laplacian, CV_8U);
+	Laplacian(input, p1_laplacian, CV_8U);
 	imshow("Laplacian_p1", p1_laplacian);
 
 	// Canny Edge detection
 	Mat p1_canny;
-	Canny(p1, p1_canny, 25, 50);
+	Canny(input, p1_canny, 15, 60);
 	imshow("p1_canny", p1_canny);
+
+	// Hough Transform
+	// 4ë²ˆì¨° íŒŒë¼ë¯¸í„°ë¥¼ ì¡°ì •í•˜ì—¬ ì„  ê²€ì¶œ ì •ë„ë¥¼ ì¡°ì ˆ
+	vector<Vec2f> lines;
+	HoughLines(p1_canny, lines, 1, CV_PI / 180, 100);
+
+	Mat img_hough;
+	input.copyTo(img_hough);
+
+	Mat img_lane;
+	threshold(p1_canny, img_lane, 150, 255, THRESH_MASK);
+
+	
+
+	for (size_t i = 0; i < lines.size(); i++)
+	{
+		float rho = lines[i][0], theta = lines[i][1];
+		
+
+		std::cout <<"rho:"<< rho << " theta:" << theta << endl;
+		if (theta==0 && rho<250 && rho>200)
+		{
+			std::cout << "í‰ë²” ë¶„í• ì„ ì´ ìˆìŠµë‹ˆë‹¤." << endl;
+		}
+
+
+		Point pt1, pt2;
+		double a = cos(theta), b = sin(theta);
+		double x0 = a * rho, y0 = b * rho;
+		pt1.x = cvRound(x0 + 1000 * (-b));
+		pt1.y = cvRound(y0 + 1000 * (a));
+		pt2.x = cvRound(x0 - 1000 * (-b));
+		pt2.y = cvRound(y0 - 1000 * (a));
+		line(img_hough, pt1, pt2, Scalar(0, 0, 255), 2, 8);
+		line(img_lane, pt1, pt2, Scalar::all(255), 1, 8);
+	}
+
+	std::cout <<"ê²€ì¶œí•œ ì§ì„  ê°œìˆ˜:"<< lines.size();
+
+
+	imshow("img_hough", img_hough);
+	imshow("img_lane", img_lane);
+
 
 	waitKey(0);
 
