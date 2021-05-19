@@ -32,8 +32,6 @@ Mat getMask(Mat input)
 	Mat hsv, h, s, v;
 	Mat hls, h2, l, v2;
 
-	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
-
 	//imshow("input", input);
 
 	cvtColor(input, hsv, COLOR_BGR2HSV);
@@ -84,7 +82,8 @@ Mat getMask(Mat input)
 int main()
 {
 	Mat input =imread("./sample2.jpg");
-	
+
+	resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
 	imshow("asdf", mask);
 	//원본이미지에서 알약 자르기
