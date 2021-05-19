@@ -6,39 +6,59 @@
 using namespace std;
 using namespace cv;
 
-int main()
+Mat cropimage(Mat input, Mat mask)
 {
-	Mat input =imread("./평범한 분할선_크롭.jpg");
+	vector<vector<Point> > contours;
+	findContours(mask, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+	int max_contour = -1;
+	int max_area = -1;
+	//drawContours(mask, contours, -1, (0, 255, 0), 3);
+	imshow("asdf", mask);
+	for (int i = 0; i < contours.size(); i++)
+	{
+		int area = contourArea(contours[i]);
+		if (area > max_area && area<300000)
+		{
+			max_area = area;
+			max_contour = i;
+		}
+	}
+	return input(boundingRect(contours[max_contour]));
+
+}
+
+Mat getMask(Mat input)
+{
 	Mat hsv, h, s, v;
 	Mat hls, h2, l, v2;
-	
-	resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
-	
-	imshow("input", input);
 
-	cvtColor(input,hsv,COLOR_BGR2HSV);
+	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
+
+	//imshow("input", input);
+
+	cvtColor(input, hsv, COLOR_BGR2HSV);
 	cvtColor(input, hls, COLOR_BGR2HLS);
-	
+
 	vector<Mat> hsvc, hlsc;
-	
+
 	split(hsv, hsvc);
 	split(hls, hlsc);
-	
+
 	//imshow("hls", hlsc[2]);
 	//imshow("hsv", hsvc[2]);
-	
+
 	//그림자 부분 추출
 	Mat shadowMask;
-	
+
 	//그림자 범위
 	Scalar lows = Scalar(0, 0, 76.5);
 	Scalar highs = Scalar(180, 255, 145.5);
 	inRange(hsv, lows, highs, shadowMask);
-	
+
 	//imshow("shadowMask", shadowMask);
 	//알약 추출
 	Mat shapemask;
-	
+
 	//알약 범위
 	Scalar low = Scalar(0, 0, 0);
 	Scalar high = Scalar(180, 255, 30);
@@ -51,19 +71,31 @@ int main()
 	//imshow("ssmask", ssmask);
 	//오프닝 클로징으로 다듬기
 	Mat ssmasked1, ssmasked2;
-	Mat mask = getStructuringElement(MORPH_ELLIPSE,Size(2,2));
-	Mat mask2 = getStructuringElement(MORPH_ELLIPSE,Size(8,8));
+	Mat mask = getStructuringElement(MORPH_ELLIPSE, Size(2, 2));
+	Mat mask2 = getStructuringElement(MORPH_ELLIPSE, Size(8, 8));
 	morphologyEx(ssmask, ssmasked1, MORPH_CLOSE, mask);
-	morphologyEx(ssmasked1, ssmasked1, MORPH_OPEN,mask);
+	morphologyEx(ssmasked1, ssmasked1, MORPH_OPEN, mask);
 	//imshow("ssmasked1", ssmasked1);
 	morphologyEx(ssmasked1, ssmasked2, MORPH_CLOSE, mask2);
 	//imshow("ssmasked2", ssmasked2);
+	return ssmasked2;
+}
+
+int main()
+{
+	Mat input =imread("./sample2.jpg");
 	
+	Mat mask = getMask(input);
+	imshow("asdf", mask);
 	//원본이미지에서 알약 자르기
-	cvtColor(ssmasked2, ssmasked2, COLOR_GRAY2BGR);
-	Mat p1;
-	p1 = input + ~ssmasked2;
-	//imshow("p1", p1);
+	Mat crop = cropimage(input, mask);
+	imshow("asdf2", crop);
+	//불안정해서 임시 제거
+	//Mat ssmasked2_bgr;
+	//cvtColor(ssmasked2, ssmasked2_bgr, COLOR_GRAY2BGR);
+	//Mat maskedImage;
+	//maskedImage = input + ~ssmasked2_bgr;
+	//imshow("maskedImage", maskedImage);
 
 	// 알약 영역에서 음각 추출
 	// Sobel Edge
