@@ -17,7 +17,7 @@ Mat cropimage(Mat input, Mat mask)
 	for (int i = 0; i < contours.size(); i++)
 	{
 		int area = contourArea(contours[i]);
-		if (area > max_area && area<300000)
+		if (area > max_area && area < 300000)
 		{
 			max_area = area;
 			max_contour = i;
@@ -81,14 +81,15 @@ Mat getMask(Mat input)
 
 int main()
 {
-	Mat input =imread("./sample2.jpg");
+	Mat input = imread("./sample2.jpg");
 
-	resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
 	imshow("asdf", mask);
 	//원본이미지에서 알약 자르기
 	Mat crop = cropimage(input, mask);
-	imshow("asdf2", crop);
+	resize(crop, crop, cv::Size(500, 300), 0, 0, CV_INTER_NN);
+	//imshow("asdf2", crop);
+
 	//불안정해서 임시 제거
 	//Mat ssmasked2_bgr;
 	//cvtColor(ssmasked2, ssmasked2_bgr, COLOR_GRAY2BGR);
@@ -99,9 +100,9 @@ int main()
 	// 알약 영역에서 음각 추출
 	// Sobel Edge
 	Mat p1_sobel_x;
-	Sobel(input, p1_sobel_x, -1, 1, 0);
+	Sobel(crop, p1_sobel_x, -1, 1, 0);
 	Mat p1_sobel_y;
-	Sobel(input, p1_sobel_y, -1, 0, 1);
+	Sobel(crop, p1_sobel_y, -1, 0, 1);
 
 	imshow("sobel_x", p1_sobel_x);
 	imshow("sobel_y", p1_sobel_y);
@@ -111,55 +112,56 @@ int main()
 
 	// Laplacian Edge
 	Mat p1_laplacian;
-	Laplacian(input, p1_laplacian, CV_8U);
+	Laplacian(crop, p1_laplacian, CV_8U);
 	imshow("Laplacian_p1", p1_laplacian);
 
 	// Canny Edge detection
 	Mat p1_canny;
-	Canny(input, p1_canny, 15, 60);
+	Canny(crop, p1_canny, 15, 60);
 	imshow("p1_canny", p1_canny);
 
 	// Hough Transform
-	// 4번쨰 파라미터를 조정하여 선 검출 정도를 조절
-	vector<Vec2f> lines;
-	HoughLines(p1_canny, lines, 1, CV_PI / 180, 100);
+	// 150부터 50까지 파라미터를 조정하여 선 검출 정도를 조절
+	for (int th = 150; th >= 30; th = th - 10) {
+		vector<Vec2f> lines;
+		HoughLines(p1_canny, lines, 1, CV_PI / 180, 100);
 
-	Mat img_hough;
-	input.copyTo(img_hough);
+		Mat img_hough;
+		crop.copyTo(img_hough);
 
-	Mat img_lane;
-	threshold(p1_canny, img_lane, 150, 255, THRESH_MASK);
+		Mat img_lane;
+		threshold(p1_canny, img_lane, 150, 255, THRESH_MASK);
 
-	
 
-	for (size_t i = 0; i < lines.size(); i++)
-	{
-		float rho = lines[i][0], theta = lines[i][1];
-		
 
-		std::cout <<"rho:"<< rho << " theta:" << theta << endl;
-		if (theta==0 && rho<250 && rho>200)
+		for (size_t i = 0; i < lines.size(); i++)
 		{
-			std::cout << "평범 분할선이 있습니다." << endl;
+			float rho = lines[i][0], theta = lines[i][1];
+
+
+			std::cout << "rho:" << rho << " theta:" << theta << endl;
+			if (theta == 0 && rho < 250 && rho>200)
+			{
+				std::cout << "평범 분할선이 있습니다." << endl;
+			}
+
+
+			Point pt1, pt2;
+			double a = cos(theta), b = sin(theta);
+			double x0 = a * rho, y0 = b * rho;
+			pt1.x = cvRound(x0 + 1000 * (-b));
+			pt1.y = cvRound(y0 + 1000 * (a));
+			pt2.x = cvRound(x0 - 1000 * (-b));
+			pt2.y = cvRound(y0 - 1000 * (a));
+			line(img_hough, pt1, pt2, Scalar(0, 0, 255), 2, 8);
+			line(img_lane, pt1, pt2, Scalar::all(255), 1, 8);
 		}
 
-
-		Point pt1, pt2;
-		double a = cos(theta), b = sin(theta);
-		double x0 = a * rho, y0 = b * rho;
-		pt1.x = cvRound(x0 + 1000 * (-b));
-		pt1.y = cvRound(y0 + 1000 * (a));
-		pt2.x = cvRound(x0 - 1000 * (-b));
-		pt2.y = cvRound(y0 - 1000 * (a));
-		line(img_hough, pt1, pt2, Scalar(0, 0, 255), 2, 8);
-		line(img_lane, pt1, pt2, Scalar::all(255), 1, 8);
+		std::cout << "threshold가" << th << "일 때 검출한 직선 개수:" << lines.size() << endl;
 	}
 
-	std::cout <<"검출한 직선 개수:"<< lines.size();
-
-
-	imshow("img_hough", img_hough);
-	imshow("img_lane", img_lane);
+	//imshow("img_hough", img_hough);
+	//imshow("img_lane", img_lane);
 
 
 	waitKey(0);
