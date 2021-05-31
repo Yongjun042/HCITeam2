@@ -1,8 +1,15 @@
 #include<opencv2/opencv.hpp>
 #include<vector>
 #include<iostream>
-
-
+/*
+#include <tesseract/baseapi.h>
+#include <leptonica/allheaders.h>
+#include <opencv2/core/core.hpp> 
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+int convert_mat(Mat image);
+TessBaseAPI api;
+*/
 using namespace std;
 using namespace cv;
 
@@ -78,9 +85,60 @@ Mat getMask(Mat input)
 	//imshow("ssmasked2", ssmasked2);
 	return ssmasked2;
 }
-
+/*
+//mat image ocr 가능하게 바꿔줌
+int convert_mat(Mat image) {
+    // 이미지 로딩
+    // imshow("Display window", image);
+    // 개략적인 전처리
+    Mat gray;
+    cvtColor(image, gray, CV_BGR2GRAY);
+    // Tesseract API로 입력시킴. 
+  
+    api.Init(NULL, "eng+kor", OEM_DEFAULT);
+    api.SetPageSegMode(PSM_SINGLE_BLOCK);
+    api.SetImage((uchar*)gray.data, gray.cols, gray.rows,1, gray.step);
+    api.Recognize(0);
+    waitKey(0);
+    return 0;
+}
+*/
 int main()
 {
+	 //parlinepilldata 4000장이라 testpill 10장정도 실험해봄
+	/*
+	// 한글 인코딩 문제 해결
+    locale::global(std::locale("ko_KR.UTF-8")); 
+    string outText;
+    Mat p_img;
+
+
+    String path("./testpill/*.jpg"); // jpg 확장자 파일만 읽음
+    vector<String> str;
+    // 이미지 저장을 위한 변수
+    int index = 0;
+    char buf[256];
+
+    glob(path, str, false); // 파일 목록을 가져오는 glob 함수
+                      // glob(찾을 파일 경로, 찾은 파일 경로, recusive(true or false)
+                      // true : 폴더 내 하위 폴더 속 까지 파일을 찾음
+                      // false : 폴더 내 파일을 찾음
+    cout << "로드 개수 : " << str.size() << endl;
+    if (str.size() == 0)
+        cout << "이미지가 존재하지 않습니다.\n" << endl;
+ // 하나씩 불러와서 처리해줌
+    for (int cnt = 0; cnt < str.size(); cnt++)
+    {
+        p_img = imread(str[cnt]);
+        //하나씩 ocr 함수에 넣어줌
+        convert_mat(p_img);
+        outText = string(api.GetUTF8Text());
+        cout << "OUT Text: " << outText << endl;
+        api.End();
+        //string temp = to_string(cnt + 1);
+
+    }
+	*/
 	Mat input =imread("./sample2.jpg");
 
 	resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
