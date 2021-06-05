@@ -184,14 +184,3 @@ Mat* split_line(Mat src, int *split_line_type)
     
     return output;
 }
-
-int main()
-{
-   Mat src = imread("./평범한 분할선_크롭.jpg");
-   int split_line_type;
-   
-    Mat* img = split_line(src, &split_line_type);
-   waitKey(0);
-
-   return 0;
-}
