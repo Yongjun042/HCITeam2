@@ -1,4 +1,4 @@
-//  lanedivide.cpp
+//  dividing.cpp
 //
 //  Created by 박범수 on 2021/06/05.
 //
