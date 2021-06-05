@@ -14,7 +14,8 @@ TessBaseAPI api;
 using namespace std;
 using namespace cv;
 
-vector<Point> cropimage(Mat input, Mat mask)
+//get contour of mask
+vector<Point> getContours(Mat mask)
 {
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
@@ -44,30 +45,20 @@ vector<Point> cropimage(Mat input, Mat mask)
 	return contours[max_contour];
 }
 
-vector<vector<Point> > cropimage(Mat input, Mat mask, int a)
+//get contours of mask
+vector<vector<Point> > getContours(Mat mask, int a)
 {
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	findContours(mask, contours, hierarchy, RETR_TREE, CHAIN_APPROX_NONE);
 	int max_contour = -1;
 	int max_area = -1;
-	if (!contours.empty() && !hierarchy.empty()) {
-
-		// loop through the contours/hierarchy
-		for (int i = 0; i < contours.size(); i++) {
-
-			// look for hierarchy[i][3]!=-1, ie hole boundaries
-			if (hierarchy[i][3] == -1) {
-				// random colour
-				Scalar colour((rand() & 255), (rand() & 255), (rand() & 255));
-				drawContours(input, contours, i, colour);
-			}
-		}
-	}
+	int max_area2 = 2;
 	//drawContours(mask, contours, -1, (0, 255, 0), 3);
 	//drawContours(input, contours, -1, (0, 255, 0), 3);
 	//imshow("asdf", input);
 	int max_contour2 = 0;
+	Mat img(mask.rows, mask.cols, CV_8U);
 	if (!contours.empty() && !hierarchy.empty()) {
 
 		// loop through the contours/hierarchy
@@ -75,23 +66,32 @@ vector<vector<Point> > cropimage(Mat input, Mat mask, int a)
 
 			// look for hierarchy[i][3]!=-1, ie hole boundaries
 			if (hierarchy[i][3] == -1) {
+				drawContours(img, contours, i, Scalar(155, 230, 70));
 				int area = contourArea(contours[i]);
 				if (area > max_area)
 				{
 					int area = contourArea(contours[i]);
+					max_area2 = max_area;
 					max_area = area;
 					max_contour2 = max_contour;
 					max_contour = i;
 				}
+				else if (area > max_area2)
+				{
+					max_area2 = area;
+					max_contour2 = i;
+				}
 			}
 		}
 	}
+	//imshow("conts", img);
 	vector<vector<Point> > retval;
 	retval.push_back(contours[max_contour]);
 	retval.push_back(contours[max_contour2]);
 	return retval;
 }
 
+// find inner rect fron contoured image
 Rect findMinRect(const Mat1b& src)
 {
 	Mat1f W(src.rows, src.cols, float(0));
@@ -127,7 +127,8 @@ Rect findMinRect(const Mat1b& src)
 	return maxRect;
 }
 
-Mat croptext(Mat img, vector<Point> cont)
+// crop inner text from pill
+Mat croptext(Mat img, vector<Point> cont, int shape = 0)
 {
 	// Create a mask for each single blob
 	Mat maskSingleContour(img.rows, img.cols,CV_8U);
@@ -136,12 +137,23 @@ Mat croptext(Mat img, vector<Point> cont)
 	cont2.push_back(cont);
 	drawContours(maskSingleContour, cont2, 0, Scalar(255), FILLED);
 
-	// Find minimum rect for each blob
 	Rect box = findMinRect(~maskSingleContour);
-	box.x = box.x + 5;
-	box.y = box.y + 5;
-	box.width = box.width - 5;
-	box.height = box.height - 5;
+	//Adjust box size
+	if (box.width > box.height * 2 && shape !=5)
+	{
+
+		box.x = box.x+(box.width / 5);
+		box.y = box.y + 5;
+		box.width = 7*box.width/10;
+		box.height = box.height - 5;
+	}
+	else
+	{
+		box.x = box.x + 5;
+		box.y = box.y + 5;
+		box.width = box.width - 5;
+		box.height = box.height - 5;
+	}
 	// Draw rect
 	Scalar rectColor(234, 22, 100);
 	rectangle(img, box, rectColor, 2);
@@ -149,7 +161,7 @@ Mat croptext(Mat img, vector<Point> cont)
 	return img(box);
 }
 
-
+// get a outline of phill
 Mat getMask(Mat input)
 {
 	Mat gray_input;
@@ -171,7 +183,7 @@ Mat getMask(Mat input)
 	//imshow("mf", gray_input + morph +(morph2)+morph3);
 	cv::adaptiveThreshold(gray_input + morph, thresh_input, 255,
 		cv::ADAPTIVE_THRESH_GAUSSIAN_C,
-		cv::THRESH_BINARY, 27, 3);
+		cv::THRESH_BINARY, 35, 3);
 	//cv::adaptiveThreshold(gray_input , thresh_2, 255,
 		//cv::ADAPTIVE_THRESH_GAUSSIAN_C,
 		//cv::THRESH_BINARY, 93, 3);
@@ -180,20 +192,22 @@ Mat getMask(Mat input)
 	Mat kernel2 = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
 	Mat asdf, asdf2, asdf3,asdf4;
 	morphologyEx(~thresh_input, asdf, MORPH_CLOSE, kernel2);
-	imshow("asdf", asdf);
+	//imshow("asdf", asdf);
 	morphologyEx(asdf, asdf2, MORPH_OPEN, kernel);
-	imshow("asdf2", asdf2);
+	//imshow("asdf2", asdf2);
 	morphologyEx(asdf2, asdf3, MORPH_CLOSE, kernel2);
-	imshow("asdf3", asdf3);
+	//imshow("asdf3", asdf3);
 	morphologyEx(asdf3, asdf4, MORPH_OPEN, kernel);
 	imshow("asdf4", asdf4);
 	//imshow("adapt2", ~thresh_2);
-	return asdf3;
+	return asdf4;
 }
 
-void MatchShape(Mat img, vector<Point> cont)
+//find similar shape
+int matchShape(Mat img, vector<Point> cont)
 {
-	Mat shapes[] = { imread("./shape/circle.png",IMREAD_GRAYSCALE), imread("./shape/hexagon.png",IMREAD_GRAYSCALE), imread("./shape/oval.png",IMREAD_GRAYSCALE), imread("./shape/rounded.png",IMREAD_GRAYSCALE) };
+	Mat shapes[] = { imread("./shape/circle.png",IMREAD_GRAYSCALE), imread("./shape/hexagon.png",IMREAD_GRAYSCALE), imread("./shape/oval.png",IMREAD_GRAYSCALE), imread("./shape/rounded.png",IMREAD_GRAYSCALE) , imread("./shape/soft.png",IMREAD_GRAYSCALE), imread("./shape/capsule.png",IMREAD_GRAYSCALE) };
+	String shapeName[] = { "circle","hexagon","oval","round","soft","capsule"};
 	//for (int i = 0; i < 4; i++)
 	//{
 	//	resize(shapes[i], shapes[i], Size(300, 300));
@@ -208,40 +222,31 @@ void MatchShape(Mat img, vector<Point> cont)
 
 	Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
 	Mat oc;
-	//imshow("maskSingleContour", maskSingleContour);
+	imshow("maskSingleContour", maskSingleContour);
 	morphologyEx(maskSingleContour, oc, MORPH_OPEN, kernel);
 	morphologyEx(oc, oc, MORPH_CLOSE, kernel);
-	//imshow("oc", oc);
+	imshow("oc", oc);
 
 	vector<vector<Point> > contours1;
 	findContours(oc, contours1, RETR_TREE, CHAIN_APPROX_NONE);
 	Rect bound = boundingRect(contours1[0]);
 	Mat crop = oc(bound);
-	imshow("crop", crop);
+	//imshow("crop", crop);
 	Mat resized;
 	//resize(crop, resized, Size(300, 300));
 	//imshow("resized", resized);
-	double result2[4];
-	for (int i = 0; i < 4; i++)
+	double result[6];
+	for (int i = 0; i < 6; i++)
 	{
-		//for (int j = 0; j < 6; j++)
-		//{
-		//	double minVal, maxVal;
-		//	Point minLoc, maxLoc;
-		//	Mat result;
-		//	matchTemplate(oc, shapes[i], result, j);
-		//	minMaxLoc(result, &minVal, &maxVal, &minLoc, NULL);
-		//	Mat fdsa(oc.rows, oc.cols, CV_8U);
-		//	rectangle(fdsa, minLoc,
-		//		Point(minLoc.x + oc.cols, minLoc.y + oc.rows), Scalar(255, 0, 0), 2);
-		//	imshow("a" +i + ' ' + j, fdsa);
-		//	cout <<fixed<< i << "\t" << j << "\t" << minVal << endl;
-		//}
 		vector<vector<Point> > contours2;
 		findContours(shapes[i], contours2, RETR_TREE, CHAIN_APPROX_NONE);
-		result2[i]= matchShapes(contours1[0], contours2[0],1,0.0);
-		cout << result2[i]<<endl;
+		result[i]= matchShapes(contours1[0], contours2[0],1,0.0);
+		cout << result[i]<<endl;
 	}
+
+	int matched = distance(result, min_element(result, result + (sizeof(result) / sizeof(*result))));
+	cout << shapeName[matched] <<endl;
+	return matched;
 
 }
 
@@ -303,15 +308,19 @@ int main()
 	//200200234
 	//200201201 안됨
 	//200600830
-	Mat input =imread("./partingLinePillData/200600830.jpg");
+	//./testpill/199901998.jpg
+	//200101361
+	//200301828
+
+	Mat input =imread("./testpill/200101361.jpg");
 
 	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
 	//imshow("mask", mask);
-	vector<Point> cont = cropimage(input,mask);
-	MatchShape(input, cont);
-	//Mat crop = croptext(input, cont);
-	//imshow("crop", crop);
+	vector<Point> cont = getContours(mask,1)[1];
+	int shape =matchShape(input, cont);
+	Mat crop = croptext(input, cont,shape);
+	imshow("crop", crop);
 
 	//imshow("a", a);
 	//imshow("asdf", mask);
