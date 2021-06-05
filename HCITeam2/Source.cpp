@@ -14,78 +14,237 @@ TessBaseAPI api;
 using namespace std;
 using namespace cv;
 
-Mat cropimage(Mat input, Mat mask)
+vector<Point> cropimage(Mat input, Mat mask)
 {
 	vector<vector<Point> > contours;
-	findContours(mask, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+	vector<Vec4i> hierarchy;
+	findContours(mask, contours, hierarchy, RETR_TREE, CHAIN_APPROX_NONE);
 	int max_contour = -1;
 	int max_area = -1;
-	//drawContours(mask, contours, -1, (0, 255, 0), 3);
-	imshow("asdf", mask);
-	for (int i = 0; i < contours.size(); i++)
-	{
-		int area = contourArea(contours[i]);
-		if (area > max_area && area<300000)
-		{
-			max_area = area;
-			max_contour = i;
+	if (!contours.empty() && !hierarchy.empty()) {
+
+		// loop through the contours/hierarchy
+		for (int i = 0; i < contours.size(); i++) {
+
+			// look for hierarchy[i][3]!=-1, ie hole boundaries
+			if (hierarchy[i][3] == -1) {
+
+				int area = contourArea(contours[i]);
+				if (area > max_area)
+				{
+					max_area = area;
+					max_contour = i;
+				}
+			}
 		}
 	}
-	return input(boundingRect(contours[max_contour]));
-
+	//drawContours(mask, contours, -1, (0, 255, 0), 3);
+	//drawContours(input, contours, -1, (0, 255, 0), 3);
+	//imshow("asdf", input);
+	return contours[max_contour];
 }
+
+vector<vector<Point> > cropimage(Mat input, Mat mask, int a)
+{
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	findContours(mask, contours, hierarchy, RETR_TREE, CHAIN_APPROX_NONE);
+	int max_contour = -1;
+	int max_area = -1;
+	if (!contours.empty() && !hierarchy.empty()) {
+
+		// loop through the contours/hierarchy
+		for (int i = 0; i < contours.size(); i++) {
+
+			// look for hierarchy[i][3]!=-1, ie hole boundaries
+			if (hierarchy[i][3] == -1) {
+				// random colour
+				Scalar colour((rand() & 255), (rand() & 255), (rand() & 255));
+				drawContours(input, contours, i, colour);
+			}
+		}
+	}
+	//drawContours(mask, contours, -1, (0, 255, 0), 3);
+	//drawContours(input, contours, -1, (0, 255, 0), 3);
+	//imshow("asdf", input);
+	int max_contour2 = 0;
+	if (!contours.empty() && !hierarchy.empty()) {
+
+		// loop through the contours/hierarchy
+		for (int i = 0; i < contours.size(); i++) {
+
+			// look for hierarchy[i][3]!=-1, ie hole boundaries
+			if (hierarchy[i][3] == -1) {
+				int area = contourArea(contours[i]);
+				if (area > max_area)
+				{
+					int area = contourArea(contours[i]);
+					max_area = area;
+					max_contour2 = max_contour;
+					max_contour = i;
+				}
+			}
+		}
+	}
+	vector<vector<Point> > retval;
+	retval.push_back(contours[max_contour]);
+	retval.push_back(contours[max_contour2]);
+	return retval;
+}
+
+Rect findMinRect(const Mat1b& src)
+{
+	Mat1f W(src.rows, src.cols, float(0));
+	Mat1f H(src.rows, src.cols, float(0));
+
+	Rect maxRect(0, 0, 0, 0);
+	float maxArea = 0.f;
+
+	for (int r = 0; r < src.rows; ++r)
+	{
+		for (int c = 0; c < src.cols; ++c)
+		{
+			if (src(r, c) == 0)
+			{
+				H(r, c) = 1.f + ((r > 0) ? H(r - 1, c) : 0);
+				W(r, c) = 1.f + ((c > 0) ? W(r, c - 1) : 0);
+			}
+
+			float minw = W(r, c);
+			for (int h = 0; h < H(r, c); ++h)
+			{
+				minw = min(minw, W(r - h, c));
+				float area = (h + 1) * minw;
+				if (area > maxArea)
+				{
+					maxArea = area;
+					maxRect = Rect(Point(c - minw + 1, r - h), Point(c + 1, r + 1));
+				}
+			}
+		}
+	}
+
+	return maxRect;
+}
+
+Mat croptext(Mat img, vector<Point> cont)
+{
+	// Create a mask for each single blob
+	Mat maskSingleContour(img.rows, img.cols,CV_8U);
+	maskSingleContour = Scalar(0, 0, 0);
+	vector< vector<Point> > cont2;
+	cont2.push_back(cont);
+	drawContours(maskSingleContour, cont2, 0, Scalar(255), FILLED);
+
+	// Find minimum rect for each blob
+	Rect box = findMinRect(~maskSingleContour);
+	box.x = box.x + 5;
+	box.y = box.y + 5;
+	box.width = box.width - 5;
+	box.height = box.height - 5;
+	// Draw rect
+	Scalar rectColor(234, 22, 100);
+	rectangle(img, box, rectColor, 2);
+
+	return img(box);
+}
+
 
 Mat getMask(Mat input)
 {
-	Mat hsv, h, s, v;
-	Mat hls, h2, l, v2;
-
-	//imshow("input", input);
-
-	cvtColor(input, hsv, COLOR_BGR2HSV);
-	cvtColor(input, hls, COLOR_BGR2HLS);
-
-	vector<Mat> hsvc, hlsc;
-
-	split(hsv, hsvc);
-	split(hls, hlsc);
-
-	//imshow("hls", hlsc[2]);
-	//imshow("hsv", hsvc[2]);
-
-	//그림자 부분 추출
-	Mat shadowMask;
-
-	//그림자 범위
-	Scalar lows = Scalar(0, 0, 76.5);
-	Scalar highs = Scalar(180, 255, 145.5);
-	inRange(hsv, lows, highs, shadowMask);
-
-	//imshow("shadowMask", shadowMask);
-	//알약 추출
-	Mat shapemask;
-
-	//알약 범위
-	Scalar low = Scalar(0, 0, 0);
-	Scalar high = Scalar(180, 255, 30);
-	inRange(hls, low, high, shapemask);
-	//imshow("shapemask", shapemask);
-
-	//알약 범위 - 그림자 범위
-	Mat ssmask;
-	subtract(shapemask, shadowMask, ssmask);
-	//imshow("ssmask", ssmask);
-	//오프닝 클로징으로 다듬기
-	Mat ssmasked1, ssmasked2;
-	Mat mask = getStructuringElement(MORPH_ELLIPSE, Size(2, 2));
-	Mat mask2 = getStructuringElement(MORPH_ELLIPSE, Size(8, 8));
-	morphologyEx(ssmask, ssmasked1, MORPH_CLOSE, mask);
-	morphologyEx(ssmasked1, ssmasked1, MORPH_OPEN, mask);
-	//imshow("ssmasked1", ssmasked1);
-	morphologyEx(ssmasked1, ssmasked2, MORPH_CLOSE, mask2);
-	//imshow("ssmasked2", ssmasked2);
-	return ssmasked2;
+	Mat gray_input;
+	cv::cvtColor(input, gray_input, COLOR_BGR2GRAY);
+	//imshow("gray", gray_input);
+	Mat morph;
+	Mat mask = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2, 2), cv::Point(1, 1));
+	morphologyEx(gray_input, morph, MORPH_BLACKHAT, mask);
+	//imshow("morph", morph);
+	//imshow("minus", gray_input+(morph));
+	Mat morph2;
+	morphologyEx(gray_input + (morph), morph2, MORPH_BLACKHAT, mask);
+	//imshow("morph2", morph2);
+	Mat morph3;
+	morphologyEx(gray_input + (morph)+(morph2), morph3, MORPH_BLACKHAT, mask);
+	//imshow("morph3", morph3);
+	Mat thresh_2;
+	Mat thresh_input;
+	//imshow("mf", gray_input + morph +(morph2)+morph3);
+	cv::adaptiveThreshold(gray_input + morph, thresh_input, 255,
+		cv::ADAPTIVE_THRESH_GAUSSIAN_C,
+		cv::THRESH_BINARY, 27, 3);
+	//cv::adaptiveThreshold(gray_input , thresh_2, 255,
+		//cv::ADAPTIVE_THRESH_GAUSSIAN_C,
+		//cv::THRESH_BINARY, 93, 3);
+	imshow("adapt", ~thresh_input);
+	Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
+	Mat kernel2 = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
+	Mat asdf, asdf2, asdf3,asdf4;
+	morphologyEx(~thresh_input, asdf, MORPH_CLOSE, kernel2);
+	imshow("asdf", asdf);
+	morphologyEx(asdf, asdf2, MORPH_OPEN, kernel);
+	imshow("asdf2", asdf2);
+	morphologyEx(asdf2, asdf3, MORPH_CLOSE, kernel2);
+	imshow("asdf3", asdf3);
+	morphologyEx(asdf3, asdf4, MORPH_OPEN, kernel);
+	imshow("asdf4", asdf4);
+	//imshow("adapt2", ~thresh_2);
+	return asdf3;
 }
+
+void MatchShape(Mat img, vector<Point> cont)
+{
+	Mat shapes[] = { imread("./shape/circle.png",IMREAD_GRAYSCALE), imread("./shape/hexagon.png",IMREAD_GRAYSCALE), imread("./shape/oval.png",IMREAD_GRAYSCALE), imread("./shape/rounded.png",IMREAD_GRAYSCALE) };
+	//for (int i = 0; i < 4; i++)
+	//{
+	//	resize(shapes[i], shapes[i], Size(300, 300));
+	//}
+
+	// Create a mask for each single blob
+	Mat maskSingleContour(img.rows, img.cols, CV_8U);
+	maskSingleContour = Scalar(0, 0, 0);
+	vector< vector<Point> > cont2;
+	cont2.push_back(cont);
+	drawContours(maskSingleContour, cont2, 0, Scalar(255), FILLED);
+
+	Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
+	Mat oc;
+	//imshow("maskSingleContour", maskSingleContour);
+	morphologyEx(maskSingleContour, oc, MORPH_OPEN, kernel);
+	morphologyEx(oc, oc, MORPH_CLOSE, kernel);
+	//imshow("oc", oc);
+
+	vector<vector<Point> > contours1;
+	findContours(oc, contours1, RETR_TREE, CHAIN_APPROX_NONE);
+	Rect bound = boundingRect(contours1[0]);
+	Mat crop = oc(bound);
+	imshow("crop", crop);
+	Mat resized;
+	//resize(crop, resized, Size(300, 300));
+	//imshow("resized", resized);
+	double result2[4];
+	for (int i = 0; i < 4; i++)
+	{
+		//for (int j = 0; j < 6; j++)
+		//{
+		//	double minVal, maxVal;
+		//	Point minLoc, maxLoc;
+		//	Mat result;
+		//	matchTemplate(oc, shapes[i], result, j);
+		//	minMaxLoc(result, &minVal, &maxVal, &minLoc, NULL);
+		//	Mat fdsa(oc.rows, oc.cols, CV_8U);
+		//	rectangle(fdsa, minLoc,
+		//		Point(minLoc.x + oc.cols, minLoc.y + oc.rows), Scalar(255, 0, 0), 2);
+		//	imshow("a" +i + ' ' + j, fdsa);
+		//	cout <<fixed<< i << "\t" << j << "\t" << minVal << endl;
+		//}
+		vector<vector<Point> > contours2;
+		findContours(shapes[i], contours2, RETR_TREE, CHAIN_APPROX_NONE);
+		result2[i]= matchShapes(contours1[0], contours2[0],1,0.0);
+		cout << result2[i]<<endl;
+	}
+
+}
+
 /*
 //mat image ocr 가능하게 바꿔줌
 int convert_mat(Mat image) {
@@ -140,85 +299,98 @@ int main()
 
     }
 	*/
-	Mat input =imread("./sample2.jpg");
+	//./partingLinePillData/198900519.jpg
+	//200200234
+	//200201201 안됨
+	//200600830
+	Mat input =imread("./partingLinePillData/200600830.jpg");
 
-	resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
+	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
-	imshow("asdf", mask);
-	//원본이미지에서 알약 자르기
-	Mat crop = cropimage(input, mask);
-	imshow("asdf2", crop);
-	//불안정해서 임시 제거
-	//Mat ssmasked2_bgr;
-	//cvtColor(ssmasked2, ssmasked2_bgr, COLOR_GRAY2BGR);
-	//Mat maskedImage;
-	//maskedImage = input + ~ssmasked2_bgr;
-	//imshow("maskedImage", maskedImage);
+	//imshow("mask", mask);
+	vector<Point> cont = cropimage(input,mask);
+	MatchShape(input, cont);
+	//Mat crop = croptext(input, cont);
+	//imshow("crop", crop);
 
-	// 알약 영역에서 음각 추출
-	// Sobel Edge
-	Mat p1_sobel_x;
-	Sobel(input, p1_sobel_x, -1, 1, 0);
-	Mat p1_sobel_y;
-	Sobel(input, p1_sobel_y, -1, 0, 1);
+	//imshow("a", a);
+	//imshow("asdf", mask);
+	// 
+	// 
+	////원본이미지에서 알약 자르기
+	//Mat crop = cropimage(input, mask);
+	//imshow("asdf2", crop);
+	////불안정해서 임시 제거
+	////Mat ssmasked2_bgr;
+	////cvtColor(ssmasked2, ssmasked2_bgr, COLOR_GRAY2BGR);
+	////Mat maskedImage;
+	////maskedImage = input + ~ssmasked2_bgr;
+	////imshow("maskedImage", maskedImage);
 
-	imshow("sobel_x", p1_sobel_x);
-	imshow("sobel_y", p1_sobel_y);
-	imshow("sobel_p1", p1_sobel_x + p1_sobel_y);
+	//// 알약 영역에서 음각 추출
+	//// Sobel Edge
+	//Mat p1_sobel_x;
+	//Sobel(input, p1_sobel_x, -1, 1, 0);
+	//Mat p1_sobel_y;
+	//Sobel(input, p1_sobel_y, -1, 0, 1);
 
-
-
-	// Laplacian Edge
-	Mat p1_laplacian;
-	Laplacian(input, p1_laplacian, CV_8U);
-	imshow("Laplacian_p1", p1_laplacian);
-
-	// Canny Edge detection
-	Mat p1_canny;
-	Canny(input, p1_canny, 15, 60);
-	imshow("p1_canny", p1_canny);
-
-	// Hough Transform
-	// 4번쨰 파라미터를 조정하여 선 검출 정도를 조절
-	vector<Vec2f> lines;
-	HoughLines(p1_canny, lines, 1, CV_PI / 180, 100);
-
-	Mat img_hough;
-	input.copyTo(img_hough);
-
-	Mat img_lane;
-	threshold(p1_canny, img_lane, 150, 255, THRESH_MASK);
-
-	
-
-	for (size_t i = 0; i < lines.size(); i++)
-	{
-		float rho = lines[i][0], theta = lines[i][1];
-		
-
-		std::cout <<"rho:"<< rho << " theta:" << theta << endl;
-		if (theta==0 && rho<250 && rho>200)
-		{
-			std::cout << "평범 분할선이 있습니다." << endl;
-		}
+	//imshow("sobel_x", p1_sobel_x);
+	//imshow("sobel_y", p1_sobel_y);
+	//imshow("sobel_p1", p1_sobel_x + p1_sobel_y);
 
 
-		Point pt1, pt2;
-		double a = cos(theta), b = sin(theta);
-		double x0 = a * rho, y0 = b * rho;
-		pt1.x = cvRound(x0 + 1000 * (-b));
-		pt1.y = cvRound(y0 + 1000 * (a));
-		pt2.x = cvRound(x0 - 1000 * (-b));
-		pt2.y = cvRound(y0 - 1000 * (a));
-		line(img_hough, pt1, pt2, Scalar(0, 0, 255), 2, 8);
-		line(img_lane, pt1, pt2, Scalar::all(255), 1, 8);
-	}
 
-	std::cout <<"검출한 직선 개수:"<< lines.size();
+	//// Laplacian Edge
+	//Mat p1_laplacian;
+	//Laplacian(input, p1_laplacian, CV_8U);
+	//imshow("Laplacian_p1", p1_laplacian);
+
+	//// Canny Edge detection
+	//Mat p1_canny;
+	//Canny(input, p1_canny, 15, 60);
+	//imshow("p1_canny", p1_canny);
+
+	//// Hough Transform
+	//// 4번쨰 파라미터를 조정하여 선 검출 정도를 조절
+	//vector<Vec2f> lines;
+	//HoughLines(p1_canny, lines, 1, CV_PI / 180, 100);
+
+	//Mat img_hough;
+	//input.copyTo(img_hough);
+
+	//Mat img_lane;
+	//threshold(p1_canny, img_lane, 150, 255, THRESH_MASK);
+
+	//
+
+	//for (size_t i = 0; i < lines.size(); i++)
+	//{
+	//	float rho = lines[i][0], theta = lines[i][1];
+	//	
+
+	//	std::cout <<"rho:"<< rho << " theta:" << theta << endl;
+	//	if (theta==0 && rho<250 && rho>200)
+	//	{
+	//		std::cout << "평범 분할선이 있습니다." << endl;
+	//	}
 
 
-	imshow("img_hough", img_hough);
-	imshow("img_lane", img_lane);
+	//	Point pt1, pt2;
+	//	double a = cos(theta), b = sin(theta);
+	//	double x0 = a * rho, y0 = b * rho;
+	//	pt1.x = cvRound(x0 + 1000 * (-b));
+	//	pt1.y = cvRound(y0 + 1000 * (a));
+	//	pt2.x = cvRound(x0 - 1000 * (-b));
+	//	pt2.y = cvRound(y0 - 1000 * (a));
+	//	line(img_hough, pt1, pt2, Scalar(0, 0, 255), 2, 8);
+	//	line(img_lane, pt1, pt2, Scalar::all(255), 1, 8);
+	//}
+
+	//std::cout <<"검출한 직선 개수:"<< lines.size();
+
+
+	//imshow("img_hough", img_hough);
+	//imshow("img_lane", img_lane);
 
 
 	waitKey(0);
