@@ -168,6 +168,7 @@ Mat* split_line(Mat src, int *split_line_type)
          cout<<"약사진을 위아래로 갈랐습니다."<<endl;
          cout<<"가로 분할선이 있습니다."<<endl;
      }
+    // 분할선이 없을 
      else
      {
          *split_line_type=0;
