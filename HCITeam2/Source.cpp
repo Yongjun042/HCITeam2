@@ -46,7 +46,8 @@ vector<Point> getContours(Mat mask)
 }
 
 //get contours of mask
-vector<vector<Point> > getContours(Mat mask, int a)
+//if a==0, return ordered vec
+vector<vector<Point> > getContours(Mat mask, int a = 1)
 {
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
@@ -82,6 +83,17 @@ vector<vector<Point> > getContours(Mat mask, int a)
 					max_contour2 = i;
 				}
 			}
+		}
+	}
+	if (a == 0)
+	{
+		Rect r1 = boundingRect(contours[max_contour]);
+		Rect r2 = boundingRect(contours[max_contour2]);
+		if (r1.x > r2.x)
+		{
+			int tmp = max_contour;
+			max_contour = max_contour2;
+			max_contour2 = tmp;
 		}
 	}
 	//imshow("conts", img);
@@ -156,7 +168,7 @@ Mat croptext(Mat img, vector<Point> cont, int shape = 0)
 	}
 	// Draw rect
 	Scalar rectColor(234, 22, 100);
-	rectangle(img, box, rectColor, 2);
+	//rectangle(img, box, rectColor, 2);
 
 	return img(box);
 }
@@ -312,7 +324,7 @@ int main()
 	//200101361
 	//200301828
 
-	Mat input =imread("./testpill/200101361.jpg");
+	Mat input =imread("./testpill/199901998.jpg");
 
 	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
