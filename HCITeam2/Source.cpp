@@ -193,8 +193,12 @@ Mat getMask(Mat input)
 	Mat thresh_2;
 	Mat thresh_input;
 	//imshow("mf", gray_input + morph +(morph2)+morph3);
-	cv::adaptiveThreshold(gray_input + morph, thresh_input, 255,
-		cv::ADAPTIVE_THRESH_GAUSSIAN_C,
+	Mat img_hsv;
+	cvtColor(input, img_hsv, COLOR_BGR2HSV);
+	vector<Mat>  channels;
+	split(img_hsv, channels);
+	cv::adaptiveThreshold(channels[0], thresh_input, 255,
+		cv::ADAPTIVE_THRESH_MEAN_C,
 		cv::THRESH_BINARY, 35, 3);
 	//cv::adaptiveThreshold(gray_input , thresh_2, 255,
 		//cv::ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -324,7 +328,7 @@ int main()
 	//200101361
 	//200301828
 
-	Mat input =imread("./testpill/199901998.jpg");
+	Mat input =imread("./partingLinePillData/197800295.jpg");
 
 	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
