@@ -151,7 +151,7 @@ Mat croptext(Mat img, vector<Point> cont, int shape = 0)
 
 	Rect box = findMinRect(~maskSingleContour);
 	//Adjust box size
-	if (box.width > box.height * 2 && shape !=5)
+	if (box.width > box.height * 2 && (shape !=5 || shape !=6))
 	{
 
 		box.x = box.x+(box.width / 5);
@@ -222,8 +222,9 @@ Mat getMask(Mat input)
 //find similar shape
 int matchShape(Mat img, vector<Point> cont)
 {
-	Mat shapes[] = { imread("./shape/circle.png",IMREAD_GRAYSCALE), imread("./shape/hexagon.png",IMREAD_GRAYSCALE), imread("./shape/oval.png",IMREAD_GRAYSCALE), imread("./shape/rounded.png",IMREAD_GRAYSCALE) , imread("./shape/soft.png",IMREAD_GRAYSCALE), imread("./shape/capsule.png",IMREAD_GRAYSCALE) };
-	String shapeName[] = { "circle","hexagon","oval","round","soft","capsule"};
+	const Mat shapes[] = { imread("./shape/circle.png",IMREAD_GRAYSCALE), imread("./shape/hexagon.png",IMREAD_GRAYSCALE), imread("./shape/oval.png",IMREAD_GRAYSCALE), imread("./shape/rounded.png",IMREAD_GRAYSCALE) , imread("./shape/soft.png",IMREAD_GRAYSCALE), imread("./shape/capsule.png",IMREAD_GRAYSCALE), imread("./shape/capsule2.png",IMREAD_GRAYSCALE) };
+	const String shapeName[] = { "circle","hexagon","oval","round","soft","capsule","capsule" };
+	const int shapesLen = 7;
 	//for (int i = 0; i < 4; i++)
 	//{
 	//	resize(shapes[i], shapes[i], Size(300, 300));
@@ -251,8 +252,8 @@ int matchShape(Mat img, vector<Point> cont)
 	Mat resized;
 	//resize(crop, resized, Size(300, 300));
 	//imshow("resized", resized);
-	double result[6];
-	for (int i = 0; i < 6; i++)
+	double result[shapesLen];
+	for (int i = 0; i < shapesLen; i++)
 	{
 		vector<vector<Point> > contours2;
 		findContours(shapes[i], contours2, RETR_TREE, CHAIN_APPROX_NONE);
@@ -260,7 +261,7 @@ int matchShape(Mat img, vector<Point> cont)
 		cout << result[i]<<endl;
 	}
 
-	int matched = distance(result, min_element(result, result + (sizeof(result) / sizeof(*result))));
+	int matched = distance(result, min_element(result, result + shapesLen));
 	cout << shapeName[matched] <<endl;
 	return matched;
 
@@ -328,7 +329,7 @@ int main()
 	//200101361
 	//200301828
 
-	Mat input =imread("./partingLinePillData/197800295.jpg");
+	Mat input =imread("./testpill/152839783.png");
 
 	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
