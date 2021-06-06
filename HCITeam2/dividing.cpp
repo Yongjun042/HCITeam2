@@ -6,6 +6,7 @@
 
 Mat* split_line(Mat src, int *split_line_type)
 {
+    resize(src, src, cv::Size(300, 300), 0, 0, CV_INTER_NN);
     Mat* output;
     Mat input;
     src.copyTo(input);
