@@ -25,19 +25,19 @@ Mat* split_line(Mat src, int *split_line_type)
     Mat element3(3, 3, CV_8U, cv::Scalar(1));
     
     erode(input, input, element3);
-    imshow("erode",input);
+    //imshow("erode",input);
     
     equalizeHist(input, input);
-    imshow("eq",input);
+    //imshow("eq",input);
     
     // Canny Edge detection
     Mat p1_canny;
     Canny(input, p1_canny, 15, 25);
-    imshow("p1_canny " + name, p1_canny);
+    //imshow("p1_canny " + name, p1_canny);
 
     // Hough Transform
     vector<Vec2f> lines;
-    HoughLines(p1_canny, lines, 1, CV_PI / 180, 175); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
+    HoughLines(p1_canny, lines, 1, CV_PI / 180, 200); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
 
     Mat img_hough; // hough 윈도우
     input.copyTo(img_hough);
@@ -55,7 +55,7 @@ Mat* split_line(Mat src, int *split_line_type)
     {
        float rho = lines[i][0], theta = lines[i][1];
        
-       std::cout <<"rho:"<< rho << " theta:" << theta << endl;
+       //std::cout <<"rho:"<< rho << " theta:" << theta << endl;
 
     
         // 분할선 후보가 아니면 continue
@@ -105,8 +105,8 @@ Mat* split_line(Mat src, int *split_line_type)
        line(img_lane, pt1, pt2, Scalar::all(255), 1, 8);
     }
      
-     cout<<"min, max div x: "<<min_divx<<", "<<max_divx<<endl;
-     cout<<"min, max div x: "<<min_divy<<", "<<max_divy<<endl;
+     //cout<<"min, max div x: "<<min_divx<<", "<<max_divx<<endl;
+     //cout<<"min, max div x: "<<min_divy<<", "<<max_divy<<endl;
 
      Mat pill_left, pill_right, pill_up, pill_down;
      Mat pill_0, pill_1, pill_2, pill_3;
@@ -195,9 +195,9 @@ Mat* split_line(Mat src, int *split_line_type)
          cout<<"약에 분할선이 없습니다."<<endl;
      }
      
-    std::cout <<"검출한 직선 개수:"<< lines.size()<<endl;
+    //std::cout <<"검출한 직선 개수:"<< lines.size()<<endl;
 
-    imshow("img_hough " + name, img_hough);
+    //imshow("img_hough " + name, img_hough);
     imshow("img_lane " + name, img_lane);
     
     return output;
