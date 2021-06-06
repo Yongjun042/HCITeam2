@@ -9,17 +9,34 @@ Mat* split_line(Mat src, int *split_line_type)
     Mat* output;
     Mat input;
     src.copyTo(input);
+    
+    
+    //사진을 구분하기 위해 포인터를 string으로 바꿈
+    std::stringstream img_name;
+    img_name << split_line_type;
+    std::string name = img_name.str();
+    
     //imshow("img",input);
-    resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
-
+    resize(input, input, cv::Size(300, 300), 0, 0, CV_INTER_NN);
+    cvtColor(input, input,CV_BGR2GRAY);
+    
+    Mat element5(5, 5, CV_8U, cv::Scalar(1));
+    Mat element3(3, 3, CV_8U, cv::Scalar(1));
+    
+    erode(input, input, element3);
+    imshow("erode",input);
+    
+    equalizeHist(input, input);
+    imshow("eq",input);
+    
     // Canny Edge detection
     Mat p1_canny;
-    Canny(input, p1_canny, 15, 45);
-    //imshow("p1_canny", p1_canny);
+    Canny(input, p1_canny, 15, 25);
+    imshow("p1_canny " + name, p1_canny);
 
     // Hough Transform
     vector<Vec2f> lines;
-    HoughLines(p1_canny, lines, 1, CV_PI / 180, 200); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
+    HoughLines(p1_canny, lines, 1, CV_PI / 180, 150); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
 
     Mat img_hough; // hough 윈도우
     input.copyTo(img_hough);
@@ -41,7 +58,7 @@ Mat* split_line(Mat src, int *split_line_type)
 
     
         // 분할선 후보가 아니면 continue
-      if(!(theta<0.1&&rho<=275&&rho>=225) && !(theta>1.55&&rho<=165&&rho>=135))
+      if(!(theta<0.1&&rho<=185&&rho>=115) && !(theta>1.55&&rho<=185&&rho>=115))
          continue;
         
         // 선을 그리는 포인트 2개
@@ -100,8 +117,8 @@ Mat* split_line(Mat src, int *split_line_type)
          Mat matRotation;
          
          pill_0 = input(Rect( Point( 0, 0 ), Point( min_divx, min_divy) ));
-         pill_1 = input(Rect( Point( max_divx, 0), Point( 500, min_divy) ));
-         pill_2 = input(Rect( Point( max_divx, max_divy ), Point( 500, 300) ));
+         pill_1 = input(Rect( Point( max_divx, 0), Point( 300, min_divy) ));
+         pill_2 = input(Rect( Point( max_divx, max_divy ), Point( 300, 300) ));
          pill_3 = input(Rect( Point( 0, max_divy ), Point( min_divx, 300) ));
          
          resize(pill_0, pill_0, cv::Size(0, 0), 0.6, 1.0, CV_INTER_NN);
@@ -142,10 +159,10 @@ Mat* split_line(Mat src, int *split_line_type)
      // 세로 분할선만 있을 때
      else if (min_divx<=max_divx && min_divx!= -1000 && max_divx!=1000){
          pill_left = input(Rect( Point( 0, 0 ), Point( min_divx, 300) ));
-         pill_right = input(Rect( Point( max_divx, 0), Point( 500, 300) ));
+         pill_right = input(Rect( Point( max_divx, 0), Point( 300, 300) ));
          
-         imshow("pill_left",pill_left);
-         imshow("pill_right",pill_right);
+         imshow("pill_left " + name,pill_left);
+         imshow("pill_right " + name,pill_right);
          *split_line_type=1;
          
          output = new Mat[2] {pill_left, pill_right};
@@ -156,11 +173,11 @@ Mat* split_line(Mat src, int *split_line_type)
      }
      // 가로 분할선만 있을 때
      else if(min_divy<=max_divy && min_divy!= -1000 && max_divy!=1000){
-         pill_up = input(Rect( Point( 0, 0 ), Point( 500, min_divy) ));
-         pill_down = input(Rect( Point( 0, max_divy), Point( 500, 300) ));
+         pill_up = input(Rect( Point( 0, 0 ), Point( 300, min_divy) ));
+         pill_down = input(Rect( Point( 0, max_divy), Point( 300, 300) ));
      
-         imshow("pill_up",pill_up);
-         imshow("pill_down",pill_down);
+         imshow("pill_up " + name,pill_up);
+         imshow("pill_down " + name,pill_down);
          *split_line_type=2;
          
          output = new Mat[2] {pill_up, pill_down};
@@ -168,7 +185,6 @@ Mat* split_line(Mat src, int *split_line_type)
          cout<<"약사진을 위아래로 갈랐습니다."<<endl;
          cout<<"가로 분할선이 있습니다."<<endl;
      }
-    // 분할선이 없을 
      else
      {
          *split_line_type=0;
@@ -180,8 +196,8 @@ Mat* split_line(Mat src, int *split_line_type)
      
     std::cout <<"검출한 직선 개수:"<< lines.size()<<endl;
 
-    imshow("img_hough", img_hough);
-    imshow("img_lane", img_lane);
+    imshow("img_hough " + name, img_hough);
+    imshow("img_lane " + name, img_lane);
     
     return output;
 }
