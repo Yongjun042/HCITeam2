@@ -6,6 +6,7 @@
 
 Mat* split_line(Mat src, int *split_line_type)
 {
+    resize(src, src, cv::Size(300, 300), 0, 0, CV_INTER_NN);
     Mat* output;
     Mat input;
     src.copyTo(input);
@@ -36,7 +37,7 @@ Mat* split_line(Mat src, int *split_line_type)
 
     // Hough Transform
     vector<Vec2f> lines;
-    HoughLines(p1_canny, lines, 1, CV_PI / 180, 150); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
+    HoughLines(p1_canny, lines, 1, CV_PI / 180, 175); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
 
     Mat img_hough; // hough 윈도우
     input.copyTo(img_hough);
@@ -116,10 +117,10 @@ Mat* split_line(Mat src, int *split_line_type)
          int ImageHeight, ImageWidth;
          Mat matRotation;
          
-         pill_0 = input(Rect( Point( 0, 0 ), Point( min_divx, min_divy) ));
-         pill_1 = input(Rect( Point( max_divx, 0), Point( 300, min_divy) ));
-         pill_2 = input(Rect( Point( max_divx, max_divy ), Point( 300, 300) ));
-         pill_3 = input(Rect( Point( 0, max_divy ), Point( min_divx, 300) ));
+         pill_0 = src(Rect( Point( 0, 0 ), Point( min_divx, min_divy) ));
+         pill_1 = src(Rect( Point( max_divx, 0), Point( 300, min_divy) ));
+         pill_2 = src(Rect( Point( max_divx, max_divy ), Point( 300, 300) ));
+         pill_3 = src(Rect( Point( 0, max_divy ), Point( min_divx, 300) ));
          
          resize(pill_0, pill_0, cv::Size(0, 0), 0.6, 1.0, CV_INTER_NN);
          ImageHeight = pill_0.rows / 2;
@@ -158,8 +159,8 @@ Mat* split_line(Mat src, int *split_line_type)
      }
      // 세로 분할선만 있을 때
      else if (min_divx<=max_divx && min_divx!= -1000 && max_divx!=1000){
-         pill_left = input(Rect( Point( 0, 0 ), Point( min_divx, 300) ));
-         pill_right = input(Rect( Point( max_divx, 0), Point( 300, 300) ));
+         pill_left = src(Rect( Point( 0, 0 ), Point( min_divx, 300) ));
+         pill_right = src(Rect( Point( max_divx, 0), Point( 300, 300) ));
          
          imshow("pill_left " + name,pill_left);
          imshow("pill_right " + name,pill_right);
@@ -173,8 +174,8 @@ Mat* split_line(Mat src, int *split_line_type)
      }
      // 가로 분할선만 있을 때
      else if(min_divy<=max_divy && min_divy!= -1000 && max_divy!=1000){
-         pill_up = input(Rect( Point( 0, 0 ), Point( 300, min_divy) ));
-         pill_down = input(Rect( Point( 0, max_divy), Point( 300, 300) ));
+         pill_up = src(Rect( Point( 0, 0 ), Point( 300, min_divy) ));
+         pill_down = src(Rect( Point( 0, max_divy), Point( 300, 300) ));
      
          imshow("pill_up " + name,pill_up);
          imshow("pill_down " + name,pill_down);
@@ -189,7 +190,7 @@ Mat* split_line(Mat src, int *split_line_type)
      {
          *split_line_type=0;
          
-         output = new Mat {input};
+         output = new Mat {src};
          
          cout<<"약에 분할선이 없습니다."<<endl;
      }
