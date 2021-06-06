@@ -37,7 +37,7 @@ Mat* split_line(Mat src, int *split_line_type)
 
     // Hough Transform
     vector<Vec2f> lines;
-    HoughLines(p1_canny, lines, 1, CV_PI / 180, 150); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
+    HoughLines(p1_canny, lines, 1, CV_PI / 180, 175); // 4번째 파라미터가 높을수록 "분할선"의 기준이 높아짐
 
     Mat img_hough; // hough 윈도우
     input.copyTo(img_hough);
