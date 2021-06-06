@@ -15,7 +15,7 @@ using namespace std;
 using namespace cv;
 
 //get contour of mask
-vector<Point> getContours(Mat mask)
+vector<Point> getContours(Mat mask, Mat input)
 {
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
@@ -29,7 +29,7 @@ vector<Point> getContours(Mat mask)
 
 			// look for hierarchy[i][3]!=-1, ie hole boundaries
 			if (hierarchy[i][3] == -1) {
-
+				drawContours(input, contours, i, (0, 255, 0), 3);
 				int area = contourArea(contours[i]);
 				if (area > max_area)
 				{
@@ -42,6 +42,7 @@ vector<Point> getContours(Mat mask)
 	//drawContours(mask, contours, -1, (0, 255, 0), 3);
 	//drawContours(input, contours, -1, (0, 255, 0), 3);
 	//imshow("asdf", input);
+	imwrite("conts.png", input);
 	return contours[max_contour];
 }
 
@@ -151,7 +152,7 @@ Mat croptext(Mat img, vector<Point> cont, int shape = 0)
 
 	Rect box = findMinRect(~maskSingleContour);
 	//Adjust box size
-	if (box.width > box.height * 2 && (shape !=5 || shape !=6))
+	if (box.width > box.height * 2 && !(shape ==5 || shape ==6))
 	{
 
 		box.x = box.x+(box.width / 5);
@@ -179,31 +180,20 @@ Mat getMask(Mat input)
 	Mat gray_input;
 	cv::cvtColor(input, gray_input, COLOR_BGR2GRAY);
 	//imshow("gray", gray_input);
-	Mat morph;
 	Mat mask = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2, 2), cv::Point(1, 1));
-	morphologyEx(gray_input, morph, MORPH_BLACKHAT, mask);
-	//imshow("morph", morph);
-	//imshow("minus", gray_input+(morph));
-	Mat morph2;
-	morphologyEx(gray_input + (morph), morph2, MORPH_BLACKHAT, mask);
-	//imshow("morph2", morph2);
-	Mat morph3;
-	morphologyEx(gray_input + (morph)+(morph2), morph3, MORPH_BLACKHAT, mask);
-	//imshow("morph3", morph3);
-	Mat thresh_2;
 	Mat thresh_input;
-	//imshow("mf", gray_input + morph +(morph2)+morph3);
 	Mat img_hsv;
 	cvtColor(input, img_hsv, COLOR_BGR2HSV);
 	vector<Mat>  channels;
 	split(img_hsv, channels);
+	//imwrite("h.png", channels[0]);
 	cv::adaptiveThreshold(channels[0], thresh_input, 255,
 		cv::ADAPTIVE_THRESH_MEAN_C,
 		cv::THRESH_BINARY, 35, 3);
 	//cv::adaptiveThreshold(gray_input , thresh_2, 255,
 		//cv::ADAPTIVE_THRESH_GAUSSIAN_C,
 		//cv::THRESH_BINARY, 93, 3);
-	imshow("adapt", ~thresh_input);
+	//imwrite("adaptmean.png", ~thresh_input);
 	Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
 	Mat kernel2 = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
 	Mat asdf, asdf2, asdf3,asdf4;
@@ -215,6 +205,7 @@ Mat getMask(Mat input)
 	//imshow("asdf3", asdf3);
 	morphologyEx(asdf3, asdf4, MORPH_OPEN, kernel);
 	imshow("asdf4", asdf4);
+	//imwrite("asdf4.png", asdf4);
 	//imshow("adapt2", ~thresh_2);
 	return asdf4;
 }
@@ -243,6 +234,7 @@ int matchShape(Mat img, vector<Point> cont)
 	morphologyEx(maskSingleContour, oc, MORPH_OPEN, kernel);
 	morphologyEx(oc, oc, MORPH_CLOSE, kernel);
 	imshow("oc", oc);
+	//imwrite("oc.png", oc);
 
 	vector<vector<Point> > contours1;
 	findContours(oc, contours1, RETR_TREE, CHAIN_APPROX_NONE);
@@ -258,7 +250,7 @@ int matchShape(Mat img, vector<Point> cont)
 		vector<vector<Point> > contours2;
 		findContours(shapes[i], contours2, RETR_TREE, CHAIN_APPROX_NONE);
 		result[i]= matchShapes(contours1[0], contours2[0],1,0.0);
-		cout << result[i]<<endl;
+		cout <<fixed<< result[i] << endl;
 	}
 
 	int matched = distance(result, min_element(result, result + shapesLen));
@@ -329,15 +321,18 @@ int main()
 	//200101361
 	//200301828
 
-	Mat input =imread("./testpill/152839783.png");
+	Mat input =imread("./testpill/200600658.jpg");
 
 	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
 	//imshow("mask", mask);
-	vector<Point> cont = getContours(mask,1)[1];
-	int shape =matchShape(input, cont);
-	Mat crop = croptext(input, cont,shape);
-	imshow("crop", crop);
+	vector<vector<Point>>  cont = getContours(mask,0);
+	int shape =matchShape(input, cont[0]);
+	Mat crop1 = croptext(input, cont[0],shape);
+	imshow("crop1", crop1);
+	//imwrite("crop1.png", crop1);
+	Mat crop2 = croptext(input, cont[1], shape);
+	imshow("crop2", crop2);
 
 	//imshow("a", a);
 	//imshow("asdf", mask);
