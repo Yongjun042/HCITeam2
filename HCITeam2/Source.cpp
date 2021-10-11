@@ -190,10 +190,12 @@ Mat getMask(Mat input)
 	cv::adaptiveThreshold(channels[0], thresh_input, 255,
 		cv::ADAPTIVE_THRESH_MEAN_C,
 		cv::THRESH_BINARY, 35, 3);
-	//cv::adaptiveThreshold(gray_input , thresh_2, 255,
-		//cv::ADAPTIVE_THRESH_GAUSSIAN_C,
-		//cv::THRESH_BINARY, 93, 3);
-	//imwrite("adaptmean.png", ~thresh_input);
+	Mat thresh_2;
+	cv::adaptiveThreshold(gray_input , thresh_2, 255,
+		cv::ADAPTIVE_THRESH_MEAN_C,
+		cv::THRESH_BINARY, 35, 3);
+	imwrite("adaptmean.png", ~thresh_input);
+	imwrite("adaptmean2.png", ~thresh_2);
 	Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
 	Mat kernel2 = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
 	Mat asdf, asdf2, asdf3,asdf4;
@@ -245,12 +247,15 @@ int matchShape(Mat img, vector<Point> cont)
 	//resize(crop, resized, Size(300, 300));
 	//imshow("resized", resized);
 	double result[shapesLen];
+	double result2[shapesLen];
 	for (int i = 0; i < shapesLen; i++)
 	{
 		vector<vector<Point> > contours2;
 		findContours(shapes[i], contours2, RETR_TREE, CHAIN_APPROX_NONE);
 		result[i]= matchShapes(contours1[0], contours2[0],1,0.0);
+		result2[i] = matchShapes(contours1[0], contours2[0], 1, 0.0);
 		cout <<fixed<< result[i] << endl;
+		cout << fixed << result2[i] << endl;
 	}
 
 	int matched = distance(result, min_element(result, result + shapesLen));
@@ -321,7 +326,7 @@ int main()
 	//200101361
 	//200301828
 
-	Mat input =imread("./testpill/200600658.jpg");
+	Mat input =imread("./partingLinePillData/196200046.jpg");
 
 	//resize(input, input, cv::Size(500, 300), 0, 0, CV_INTER_NN);
 	Mat mask = getMask(input);
